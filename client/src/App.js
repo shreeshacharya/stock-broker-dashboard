@@ -2,7 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
 import './App.css';
 
-// Make sure this matches your deployed backend URL or localhost
+// ⚠️ IMPORTANT: Keep your Render URL here! 
+// If you are testing locally, use "http://localhost:3001"
+// If deploying, use "https://shreesha-stock-server.onrender.com" (or whatever your specific URL is)
 const socket = io.connect("https://stock-broker-dashboard.onrender.com");
 
 const SUPPORTED_STOCKS = [
@@ -16,131 +18,134 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [subscribedStocks, setSubscribedStocks] = useState([]); 
   const [prices, setPrices] = useState({});
-  
-  // We use this to store the PREVIOUS price to calculate trends (Up or Down)
   const prevPrices = useRef({});
 
   useEffect(() => {
     socket.on("priceUpdate", (data) => {
-      // Store current prices as "previous" before updating state
       prevPrices.current = prices; 
       setPrices(data);
     });
-  }, [prices]); // Re-run when prices change
+  }, [prices]);
 
   const handleLogin = () => {
-    // 1. Simple Regex for email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-    // 2. Test if the current email matches the pattern
     if (emailRegex.test(email)) {
-      socket.emit("login", email); // 
+      socket.emit("login", email);
       setIsLoggedIn(true);
     } else {
-      // 3. Show error if invalid
-      alert("⚠️ Access Denied: Please enter a valid email address (e.g., user@example.com)");
+      alert("⚠️ Access Denied: Please enter a valid email address.");
     }
   };
 
-  const toggleSubscription = (stock) => {
-    if (subscribedStocks.includes(stock)) {
-      setSubscribedStocks(subscribedStocks.filter(s => s !== stock));
-    } else {
-      setSubscribedStocks([...subscribedStocks, stock]);
+  // ✅ NEW FEATURE: Press Enter to Login
+  const handleKeyDown = (event) => {
+    if (event.key === 'Enter') {
+      handleLogin();
     }
   };
 
-  // Helper to determine color based on price movement
   const getPriceColor = (stock) => {
     const current = parseFloat(prices[stock]);
     const previous = parseFloat(prevPrices.current[stock]);
     if (!previous || current === previous) return 'white';
-    return current > previous ? '#4caf50' : '#f44336'; // Green or Red
+    return current > previous ? '#00ff88' : '#ff4d4d'; // Neon Green or Red
   };
 
   const getArrow = (stock) => {
     const current = parseFloat(prices[stock]);
     const previous = parseFloat(prevPrices.current[stock]);
-    if (!previous || current === previous) return '-';
+    if (!previous || current === previous) return '';
     return current > previous ? '▲' : '▼';
   };
 
   return (
     <div className="app-container">
-      {/* HEADER */}
-      <header className="navbar">
-        <div className="logo">🚀 TradePro <span style={{fontSize:'0.5em'}}>Live</span></div>
-        {isLoggedIn && <button className="logout-btn" onClick={() => setIsLoggedIn(false)}>Logout</button>}
-      </header>
-
       {/* LOGIN SCREEN */}
       {!isLoggedIn ? (
-        <div className="login-wrapper">
-          <div className="login-card">
-            <h2>Welcome Back</h2>
-            <p>Enter your email to access the live market.</p>
-            <input
-              type="email"
-              placeholder="user@example.com"
-              onChange={(event) => setEmail(event.target.value)}
-            />
-            <button onClick={handleLogin}>Access Dashboard</button>
+        <div className="login-overlay">
+          <div className="glass-card">
+            <h1>🚀 TradePro <span className="highlight">Live</span></h1>
+            <p>Institutional Grade Real-Time Data</p>
+            
+            <div className="input-group">
+              <input
+                type="email"
+                placeholder="Enter your email..."
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                onKeyDown={handleKeyDown} /* 👈 This enables the Enter Key */
+              />
+              <button onClick={handleLogin}>Enter Market →</button>
+            </div>
+            <p className="secure-text">🔒 Secured by WebSocket Encryption</p>
           </div>
         </div>
       ) : (
         /* DASHBOARD SCREEN */
-        <div className="dashboard-grid">
-          
-          {/* SIDEBAR: SELECTION */}
-          <aside className="sidebar">
-            <h3>Market Watch</h3>
-            <p className="subtitle">Select assets to monitor</p>
-            <div className="stock-list">
-              {SUPPORTED_STOCKS.map((stock) => (
-                <div 
-                  key={stock} 
-                  className={`stock-item ${subscribedStocks.includes(stock) ? 'active' : ''}`}
-                  onClick={() => toggleSubscription(stock)}
-                >
-                  <span className="ticker">{stock}</span>
-                  <span className="status-dot"></span>
-                </div>
-              ))}
+        <div className="dashboard-layout">
+          <nav className="top-nav">
+            <div className="nav-logo">TradePro <span className="highlight">Live</span></div>
+            <div className="user-info">
+              <span>👤 {email}</span>
+              <button className="logout-btn" onClick={() => setIsLoggedIn(false)}>Logout</button>
             </div>
-          </aside>
+          </nav>
 
-          {/* MAIN AREA: LIVE CARDS */}
-          <main className="main-content">
-            <div className="welcome-banner">
-              <h2>Portfolio Overview</h2>
-              <p>Real-time updates for <strong>{email}</strong></p>
-            </div>
+          <div className="main-grid">
+            {/* SIDEBAR */}
+            <aside className="sidebar">
+              <h3>Available Assets</h3>
+              <div className="scroll-list">
+                {SUPPORTED_STOCKS.map((stock) => (
+                  <div 
+                    key={stock} 
+                    className={`stock-row ${subscribedStocks.includes(stock) ? 'active' : ''}`}
+                    onClick={() => toggleSubscription(stock)}
+                  >
+                    <span>{stock}</span>
+                    <span className="add-icon">{subscribedStocks.includes(stock) ? '✓' : '+'}</span>
+                  </div>
+                ))}
+              </div>
+            </aside>
 
-            <div className="cards-container">
+            {/* MAIN CONTENT */}
+            <main className="content-area">
               {subscribedStocks.length === 0 ? (
-                <div className="empty-state">Select stocks from the left to view prices.</div>
-              ) : null}
-
-              {subscribedStocks.map((stock) => (
-                <div key={stock} className="ticker-card">
-                  <div className="card-header">
-                    <span className="card-ticker">{stock}</span>
-                    <span className="card-live-badge">LIVE</span>
-                  </div>
-                  <div className="card-price" style={{ color: getPriceColor(stock) }}>
-                    {getArrow(stock)} ${prices[stock] || "Loading..."}
-                  </div>
-                  <div className="card-footer">
-                    Updated just now
-                  </div>
+                <div className="empty-state">
+                  <h2>Your Portfolio is Empty</h2>
+                  <p>Select stocks from the sidebar to begin monitoring real-time feeds.</p>
                 </div>
-              ))}
-            </div>
-          </main>
+              ) : (
+                <div className="cards-grid">
+                  {subscribedStocks.map((stock) => (
+                    <div key={stock} className="live-card">
+                      <div className="card-top">
+                        <span className="ticker-name">{stock}</span>
+                        <span className="live-dot">● LIVE</span>
+                      </div>
+                      <div className="price-area" style={{ color: getPriceColor(stock) }}>
+                        <span className="arrow">{getArrow(stock)}</span>
+                        ${prices[stock] || "---"}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </main>
+          </div>
         </div>
       )}
     </div>
   );
+
+  function toggleSubscription(stock) {
+    if (subscribedStocks.includes(stock)) {
+      setSubscribedStocks(subscribedStocks.filter(s => s !== stock));
+    } else {
+      setSubscribedStocks([...subscribedStocks, stock]);
+    }
+  }
 }
 
 export default App;
