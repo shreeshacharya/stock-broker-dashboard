@@ -3,8 +3,6 @@ import io from 'socket.io-client';
 import './App.css';
 
 // ⚠️ IMPORTANT: Keep your Render URL here! 
-// If you are testing locally, use "http://localhost:3001"
-// If deploying, use "https://shreesha-stock-server.onrender.com" (or whatever your specific URL is)
 const socket = io.connect("https://stock-broker-dashboard.onrender.com");
 
 const SUPPORTED_STOCKS = [
@@ -37,7 +35,14 @@ function App() {
     }
   };
 
-  // ✅ NEW FEATURE: Press Enter to Login
+  // ✅ NEW: Completely wipes data on logout
+  const handleLogout = () => {
+    setIsLoggedIn(false);       // 1. Go back to login screen
+    setEmail("");               // 2. Clear the email input
+    setSubscribedStocks([]);    // 3. Clear selected stocks
+    setPrices({});              // 4. Clear old prices
+  };
+
   const handleKeyDown = (event) => {
     if (event.key === 'Enter') {
       handleLogin();
@@ -48,7 +53,7 @@ function App() {
     const current = parseFloat(prices[stock]);
     const previous = parseFloat(prevPrices.current[stock]);
     if (!previous || current === previous) return 'white';
-    return current > previous ? '#00ff88' : '#ff4d4d'; // Neon Green or Red
+    return current > previous ? '#00ff88' : '#ff4d4d'; 
   };
 
   const getArrow = (stock) => {
@@ -56,6 +61,14 @@ function App() {
     const previous = parseFloat(prevPrices.current[stock]);
     if (!previous || current === previous) return '';
     return current > previous ? '▲' : '▼';
+  };
+
+  const toggleSubscription = (stock) => {
+    if (subscribedStocks.includes(stock)) {
+      setSubscribedStocks(subscribedStocks.filter(s => s !== stock));
+    } else {
+      setSubscribedStocks([...subscribedStocks, stock]);
+    }
   };
 
   return (
@@ -73,7 +86,7 @@ function App() {
                 placeholder="Enter your email..."
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                onKeyDown={handleKeyDown} /* 👈 This enables the Enter Key */
+                onKeyDown={handleKeyDown} 
               />
               <button onClick={handleLogin}>Enter Market →</button>
             </div>
@@ -87,7 +100,8 @@ function App() {
             <div className="nav-logo">TradePro <span className="highlight">Live</span></div>
             <div className="user-info">
               <span>👤 {email}</span>
-              <button className="logout-btn" onClick={() => setIsLoggedIn(false)}>Logout</button>
+              {/* ✅ UPDATE: Calls the new handleLogout function */}
+              <button className="logout-btn" onClick={handleLogout}>Logout</button>
             </div>
           </nav>
 
@@ -138,14 +152,6 @@ function App() {
       )}
     </div>
   );
-
-  function toggleSubscription(stock) {
-    if (subscribedStocks.includes(stock)) {
-      setSubscribedStocks(subscribedStocks.filter(s => s !== stock));
-    } else {
-      setSubscribedStocks([...subscribedStocks, stock]);
-    }
-  }
 }
 
 export default App;
