@@ -11,7 +11,7 @@ const server = http.createServer(app);
 // Setup Socket.io with CORS to allow client connection
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:3000", // This will be your React frontend URL
+    origin: "*", // This will be your React frontend URL
     methods: ["GET", "POST"],
   },
 });
@@ -53,6 +53,4 @@ io.on('connection', (socket) => {
   });
 });
 
-server.listen(3001, () => {
-  console.log('SERVER RUNNING ON PORT 3001');
-});
+server.listen(process.env.PORT || 3001, () => { ... });
